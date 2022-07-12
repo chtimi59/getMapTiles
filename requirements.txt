@@ -1,0 +1,9 @@
+mypy
+flake8
+black
+isort
+crc32c
+python-dotenv
+requests
+pydantic
+pyproj
