@@ -1,11 +1,6 @@
-import os
-
 from typing import MutableSequence
 from pyproj import CRS, Transformer
 from app.tile import TileSystem, BasicTileSystem
-
-jsDebugPath = os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "googleMap", "list.js")
-
 
 crs_llh = CRS("EPSG:4979")
 crs_xyz = CRS("EPSG:4978")
@@ -20,6 +15,13 @@ xy2ll = Transformer.from_crs(crs_from=crs_xy, crs_to=crs_ll).transform
 ll2xy = Transformer.from_crs(crs_from=crs_ll, crs_to=crs_xy, always_xy=True).transform
 
 
+def xy2ll_rectangle(bbox):
+    x0, y0, x1, y1 = bbox
+    lat0, lng0 = xy2ll(x0, y0)
+    lat1, lng1 = xy2ll(x1, y1)
+    return [lat0, lng0, lat1, lng1]
+
+
 def dec2dms(dd: float):
     mult = -1 if dd < 0 else 1
     mnt, sec = divmod(abs(dd) * 3600, 60)
@@ -28,7 +30,7 @@ def dec2dms(dd: float):
 
 
 def strll(ll: MutableSequence[float]):
-    print(dec2dms(ll[0]) + ", " + dec2dms(ll[1]))
+    return dec2dms(ll[0]) + ", " + dec2dms(ll[1])
 
 
 # L12_21
@@ -54,50 +56,37 @@ ts = TileSystem(WIDTH, HEIGHT, LEFT, TOP, 9)
 
 
 def testGeoSearch(level, lngLeft, latTop):
-    f = open(jsDebugPath, 'w')
     _, test, _ = ts.pos2Tile(level, ll2xy(lngLeft, latTop), True)
-    f.write(f"window.DATA = {dbgConvertXYDict2LLDict(test)};\n")
-    f.write("window.DATA1 = {};\n")
-    f.write("\n")
+    list = []
+    for layer in test:
+        list.append({
+            'name': layer,
+            'data': xy2ll_rectangle(test[layer]),
+        })
     return list
 
 
 def getTilesNames(level, lngLeft, latTop, lngRight, latBottom):
-    f = open(jsDebugPath, 'w')
 
     nameTL = ts.pos2Tile(level, ll2xy(lngLeft, latTop))
     nameBR = ts.pos2Tile(level, ll2xy(lngRight, latBottom))
-
-    f.write("window.DATA1 = {};\n")
 
     simpleTs = BasicTileSystem(level - 8)
     x1, y1 = simpleTs.tile2Pos(nameTL)
     x2, y2 = simpleTs.tile2Pos(nameBR)
 
-    dict = {}
     list = []
-    for x in range(x1, x2 + 1):
-        for y in range(y1, y2 + 1):
+    for y in range(y1, y2 + 1):
+        for x in range(x1, x2 + 1):
             tile = simpleTs.pos2Tile([x, y])
-            list.append(tile)
 
-            # debug
             _, _, bbox = ts.pos2Tile(level, ts.tile2Pos(tile), True)
-            dict[tile] = bbox
+            list.append({
+                'name': tile,
+                'data': xy2ll_rectangle(bbox),
+            })
 
-    f.write(f"window.DATA = {dbgConvertXYDict2LLDict(dict)};\n")
-    f.write("\n")
     return list
-
-
-def dbgConvertXYDict2LLDict(bboxes):
-    layers = {}
-    for layer in bboxes:
-        x0, y0, x1, y1 = bboxes[layer]
-        lat0, lng0 = xy2ll(x0, y0)
-        lat1, lng1 = xy2ll(x1, y1)
-        layers[layer] = [lat0, lng0, lat1, lng1]
-    return layers
 
 
 # print(xy2ll(*ts.tile2Pos("2111300")))

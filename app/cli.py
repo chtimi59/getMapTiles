@@ -9,6 +9,7 @@ from dotenv import load_dotenv
 
 from app.geo import getTilesNames, testGeoSearch
 
+
 load_dotenv()
 
 ROOT = os.getenv("ROOT")
@@ -16,7 +17,6 @@ BASE_DIR = os.getenv("BASE_DIR")
 
 
 def fetch(url, retry=5):
-    print(url)
     try:
         r = requests.get(url)
         if r.status_code == 404:
@@ -143,16 +143,55 @@ def download(tile):
         path += tile[idx:idx + 3] + "/"
         idx += 3
 
-    data = fetch(ROOT + "/Data" + path + f"L{level+9}_{tile}.b3dm")
-    gltf, _ = read3dm(data)
-    img = readgltf(gltf)
-    savefile(os.path.join(BASE_DIR, tile + ".jpg"), img)
-    savefile(os.path.join(BASE_DIR, tile + ".gltf"), gltf)
+    try:
+        data = fetch(ROOT + "/Data" + path + f"L{level+9}_{tile}.b3dm", 0)
+        gltf, feature = read3dm(data)
+        img = readgltf(gltf)
+        savefile(os.path.join(BASE_DIR, tile + ".jpg"), img)
+        savefile(os.path.join(BASE_DIR, tile + ".gltf"), gltf)
+        return feature['RTC_CENTER']
+    except:
+        return None
 
-#testGeoSearch(21, 3.044522006061694, 50.64093730739812)
 
-# https://gltf-viewer.donmccurdy.com/
-# download("2111123")
+def searchTiles(lng0, lat0, lng1, lat1):
+    jsDrawRectangles = []
+
+    #jsDrawRectangles += testGeoSearch(21, lng0, lat0)
+
+    # https://gltf-viewer.donmccurdy.com/
+
+    # 20 tiles (L17)
+    tiles = getTilesNames(16, lng0, lat0, lng1, lat1)
+    # 660 tiles (L20)
+    #tiles = getTilesNames(19, lng0, lat0, lng1, lat1)
+    # 2552 tiles (L21 : max)
+    #tiles = getTilesNames(20, lng0, lat0, lng1, lat1)
+
+    count = len(tiles)
+    i = 1
+    for tile in tiles:
+        print(f"{i}/{count}: {tile['name']}")
+        i += 1
+        center = download(tile['name'])
+        if not center is None:
+            tile['center'] = center
+        else:
+            tile['color'] = "#F00"
+
+        jsDrawRectangles.append(tile)
+
+    # center
+    jsDrawRectangles.append({
+        'name': 'center',
+        'data': [lat0, lng0, lat1, lng1],
+        'color': "#F00"
+    })
+
+    listJSFilemane = os.path.join(os.path.dirname(os.path.realpath(__file__)), "..", "googleMap", "list.js")
+    listJSFile = open(listJSFilemane, 'w')
+    listJSFile.write("window.DATA=" + str(jsDrawRectangles))
+    listJSFile.write("\n")
 
 
-getTilesNames(16, 3.05828278697053, 50.63790367370581, 3.0651009622863867, 50.63476396066108)
+searchTiles(3.05828278697053, 50.63790367370581, 3.0651009622863867, 50.63476396066108)
