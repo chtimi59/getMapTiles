@@ -7,3 +7,5 @@ python-dotenv
 requests
 pydantic
 pyproj
+pygltflib
+numpy
