@@ -1,12 +1,13 @@
-
 import json
 import struct
+import math
 import numpy
 from typing import List, Callable
 from pygltflib import *
 
 @dataclass
 class Job:
+    key: str
     blob: bytes
     center: List[float]
 
@@ -146,19 +147,18 @@ def concatenate(jobs: Jobs):
 
     gltf = GLTF2()
     buffer = DynamicBuffer()
-    scene = Scene()
     nodeIdx = 0
-    xyz = [[], [], []]
-        
+    origin = None
+    children = []
+
     for job in iter(jobs):
         
         # missing tile ?
         if job is None:
             continue
-
-        xyz[0].append(job.center[0])
-        xyz[1].append(job.center[1])
-        xyz[2].append(job.center[2])
+        
+        if origin is None:
+            origin = job.center
 
         input = readGltf(job.blob)
         input.points.accessor.bufferView = nodeIdx*4 + 0 
@@ -193,29 +193,20 @@ def concatenate(jobs: Jobs):
             )
         )
 
-        gltf.nodes.append(Node(mesh=nodeIdx))
-        scene.nodes.append(nodeIdx)
+        translation = [job.center[0]-origin[0], job.center[2]-origin[2], -(job.center[1]-origin[1])]
+
+        gltf.nodes.append(Node(mesh=nodeIdx, translation=translation, name=job.key))
+        children.append(nodeIdx)
         nodeIdx +=1
+
+    angle = math.pi * (90 - 50.63790367370581)/360
+    gltf.nodes.append(Node(children=children, rotation=[0, 0, angle, 1]))
 
     # add the whole buffer at once ?
     buffer.write(gltf)
 
-    gltf.scenes.append(scene)
+    gltf.scenes.append(Scene(nodes=[nodeIdx]))
     gltf.scene = 0
-
-    # Normalize origin
-    xMin = numpy.min(xyz[0])
-    yMin = numpy.min(xyz[1])
-    zMin = numpy.min(xyz[2])
-    for i in range(nodeIdx):
-        translation = [
-            xyz[0][i]-xMin,
-            xyz[2][i]-zMin,
-            xyz[1][i]-yMin
-        ]
-
-        print(translation)
-        gltf.nodes[i].translation = translation
             
     return gltf.save_to_bytes()
 

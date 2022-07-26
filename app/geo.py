@@ -66,7 +66,7 @@ def testGeoSearch(level, lngLeft, latTop):
     return list
 
 
-def getTilesNames(level, lngLeft, latTop, lngRight, latBottom):
+def getTilesNames(level, lngLeft, latTop, lngRight, latBottom, dbgData = False):
 
     nameTL = ts.pos2Tile(level, ll2xy(lngLeft, latTop))
     nameBR = ts.pos2Tile(level, ll2xy(lngRight, latBottom))
@@ -81,10 +81,13 @@ def getTilesNames(level, lngLeft, latTop, lngRight, latBottom):
             tile = simpleTs.pos2Tile([x, y])
 
             _, _, bbox = ts.pos2Tile(level, ts.tile2Pos(tile), True)
-            list.append({
-                'name': tile,
-                'data': xy2ll_rectangle(bbox),
-            })
+            if dbgData:
+                list.append({
+                    'name': tile,
+                    'data': xy2ll_rectangle(bbox),
+                })
+            else:
+                list.append(tile)
 
     return list
 

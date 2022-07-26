@@ -5,9 +5,6 @@ import os
 from dotenv import load_dotenv
 load_dotenv()
 
-ROOT = os.getenv("ROOT")
-
-
 # https://github.com/CesiumGS/3d-tiles/blob/main/specification/TileFormats/Batched3DModel/README.md
 def read3dm(data: bytes):
     i = 0
@@ -63,9 +60,9 @@ def getUrl(tileName):
         path += tileName[idx:idx + 3] + "/"
         idx += 3
     
-    return ROOT + "/Data" + path + f"L{level+9}_{tileName}.b3dm"
+    return "/Data" + path + f"L{level+9}_{tileName}.b3dm"
 
 
 if __name__ == "__main__":
 
-    assert(getUrl("21112330") == f"{ROOT}/Data/211/123/L17_21112330.b3dm")
+    assert(getUrl("21112330") == "/Data/211/123/L17_21112330.b3dm")
